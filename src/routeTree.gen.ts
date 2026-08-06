@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ComparisonRouteImport } from './routes/comparison'
 import { Route as EnhancementRouteImport } from './routes/enhancement'
 import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as ExportRouteImport } from './routes/export'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as RecordRouteImport } from './routes/record'
+import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,6 +38,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImportRoute = ImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -46,22 +53,31 @@ const RecordRoute = RecordRouteImport.update({
   path: '/record',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/comparison': typeof ComparisonRoute
   '/enhancement': typeof EnhancementRoute
   '/explorer': typeof ExplorerRoute
+  '/export': typeof ExportRoute
   '/import': typeof ImportRoute
   '/record': typeof RecordRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/comparison': typeof ComparisonRoute
   '/enhancement': typeof EnhancementRoute
   '/explorer': typeof ExplorerRoute
+  '/export': typeof ExportRoute
   '/import': typeof ImportRoute
   '/record': typeof RecordRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,23 +85,42 @@ export interface FileRoutesById {
   '/comparison': typeof ComparisonRoute
   '/enhancement': typeof EnhancementRoute
   '/explorer': typeof ExplorerRoute
+  '/export': typeof ExportRoute
   '/import': typeof ImportRoute
   '/record': typeof RecordRoute
+  '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/comparison' | '/enhancement' | '/explorer' | '/import' | '/record'
+    | '/'
+    | '/comparison'
+    | '/enhancement'
+    | '/explorer'
+    | '/export'
+    | '/import'
+    | '/record'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/comparison' | '/enhancement' | '/explorer' | '/import' | '/record'
+  to:
+    | '/'
+    | '/comparison'
+    | '/enhancement'
+    | '/explorer'
+    | '/export'
+    | '/import'
+    | '/record'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/comparison'
     | '/enhancement'
     | '/explorer'
+    | '/export'
     | '/import'
     | '/record'
+    | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,8 +128,10 @@ export interface RootRouteChildren {
   ComparisonRoute: typeof ComparisonRoute
   EnhancementRoute: typeof EnhancementRoute
   ExplorerRoute: typeof ExplorerRoute
+  ExportRoute: typeof ExportRoute
   ImportRoute: typeof ImportRoute
   RecordRoute: typeof RecordRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/import': {
       id: '/import'
       path: '/import'
@@ -141,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -149,8 +200,10 @@ const rootRouteChildren: RootRouteChildren = {
   ComparisonRoute: ComparisonRoute,
   EnhancementRoute: EnhancementRoute,
   ExplorerRoute: ExplorerRoute,
+  ExportRoute: ExportRoute,
   ImportRoute: ImportRoute,
   RecordRoute: RecordRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
