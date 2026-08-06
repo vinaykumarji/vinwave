@@ -10,33 +10,91 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ComparisonRouteImport } from './routes/comparison'
+import { Route as EnhancementRouteImport } from './routes/enhancement'
+import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as ImportRouteImport } from './routes/import'
+import { Route as RecordRouteImport } from './routes/record'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComparisonRoute = ComparisonRouteImport.update({
+  id: '/comparison',
+  path: '/comparison',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnhancementRoute = EnhancementRouteImport.update({
+  id: '/enhancement',
+  path: '/enhancement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportRoute = ImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecordRoute = RecordRouteImport.update({
+  id: '/record',
+  path: '/record',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/comparison': typeof ComparisonRoute
+  '/enhancement': typeof EnhancementRoute
+  '/explorer': typeof ExplorerRoute
+  '/import': typeof ImportRoute
+  '/record': typeof RecordRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/comparison': typeof ComparisonRoute
+  '/enhancement': typeof EnhancementRoute
+  '/explorer': typeof ExplorerRoute
+  '/import': typeof ImportRoute
+  '/record': typeof RecordRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/comparison': typeof ComparisonRoute
+  '/enhancement': typeof EnhancementRoute
+  '/explorer': typeof ExplorerRoute
+  '/import': typeof ImportRoute
+  '/record': typeof RecordRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/comparison' | '/enhancement' | '/explorer' | '/import' | '/record'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/comparison' | '/enhancement' | '/explorer' | '/import' | '/record'
+  id:
+    | '__root__'
+    | '/'
+    | '/comparison'
+    | '/enhancement'
+    | '/explorer'
+    | '/import'
+    | '/record'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ComparisonRoute: typeof ComparisonRoute
+  EnhancementRoute: typeof EnhancementRoute
+  ExplorerRoute: typeof ExplorerRoute
+  ImportRoute: typeof ImportRoute
+  RecordRoute: typeof RecordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +106,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/comparison': {
+      id: '/comparison'
+      path: '/comparison'
+      fullPath: '/comparison'
+      preLoaderRoute: typeof ComparisonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/enhancement': {
+      id: '/enhancement'
+      path: '/enhancement'
+      fullPath: '/enhancement'
+      preLoaderRoute: typeof EnhancementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import': {
+      id: '/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof ImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/record': {
+      id: '/record'
+      path: '/record'
+      fullPath: '/record'
+      preLoaderRoute: typeof RecordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ComparisonRoute: ComparisonRoute,
+  EnhancementRoute: EnhancementRoute,
+  ExplorerRoute: ExplorerRoute,
+  ImportRoute: ImportRoute,
+  RecordRoute: RecordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
