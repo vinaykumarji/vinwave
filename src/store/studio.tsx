@@ -11,7 +11,7 @@ import {
   DEFAULT_WIENER,
   DEFAULT_VAD_PARAMS,
 } from "@/lib/dsp";
-import { createDemoSignal } from "@/lib/audio/decode";
+import { createDemoSignal, DEMO_PRESETS, type DemoNoiseKind } from "@/lib/audio/decode";
 import { yieldToUi } from "@/lib/format";
 import type {
   AlgorithmId,
