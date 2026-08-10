@@ -50,12 +50,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 const STAGE_LABELS = [
   "Loading audio",
-  "Computing FFT",
-  "Detecting noise profile",
-  "Running algorithm",
-  "Calculating SNR",
-  "Generating results",
+  "Frame blocking & windowing",
+  "Estimating noise",
+  "Applying algorithm",
+  "Calculating metrics",
+  "Preparing result",
 ] as const;
+
 
 const ALGORITHM_LABELS: Record<AlgorithmId, string> = {
   "spectral-subtraction": "Spectral Subtraction",
