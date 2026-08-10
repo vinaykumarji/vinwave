@@ -271,3 +271,25 @@
     linear-gradient(to bottom, oklch(1 0 0 / 3.5%) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+@utility glow-primary {
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+  &:hover {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 50%, transparent),
+      0 6px 20px -8px color-mix(in oklab, var(--primary) 60%, transparent);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@utility gold-ring {
+  border-color: color-mix(in oklab, var(--gold) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gold) 30%, transparent) inset;
+}
+
+@utility text-gold {
+  color: var(--gold);
+}
