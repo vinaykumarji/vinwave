@@ -158,12 +158,17 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const loadDemo = useCallback(() => {
-    loadSignal(createDemoSignal());
-    toast.success("Demo signal loaded", {
-      description: "4 s of synthesised speech with broadband noise and 50 Hz hum.",
-    });
-  }, [loadSignal]);
+  const loadDemo = useCallback(
+    (kind: DemoNoiseKind = "white") => {
+      loadSignal(createDemoSignal(kind));
+      const preset = DEMO_PRESETS.find((p) => p.id === kind);
+      toast.success(`${preset?.label ?? "Demo"} sample loaded`, {
+        description: `4 s of synthesised speech · ${preset?.description ?? ""}`,
+      });
+    },
+    [loadSignal],
+  );
+
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));
