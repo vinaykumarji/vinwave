@@ -85,7 +85,7 @@ export interface StudioState {
 export interface StudioApi extends StudioState {
   activeSignal: AudioSignal | null;
   loadSignal: (signal: AudioSignal) => void;
-  loadDemo: () => void;
+  loadDemo: (kind?: DemoNoiseKind) => void;
   setActiveSignal: (id: string) => void;
   setCursorSec: (sec: number) => void;
   setPropertiesOpen: (open: boolean) => void;
