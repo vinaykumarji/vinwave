@@ -4,6 +4,11 @@ import { cssVar } from "@/lib/viz/colormap";
 import { formatTime } from "@/lib/format";
 import type { VadSegment } from "@/types/audio";
 
+export interface WaveformSelection {
+  startSec: number;
+  endSec: number;
+}
+
 export interface WaveformViewProps {
   samples: Float32Array;
   sampleRate: number;
@@ -14,6 +19,7 @@ export interface WaveformViewProps {
   cursorSec: number;
   playheadSec?: number;
   vadSegments?: VadSegment[] | null;
+  selection?: WaveformSelection | null;
   accent?: "primary" | "accent" | "success" | "destructive";
   height?: number;
   showRuler?: boolean;
@@ -21,19 +27,20 @@ export interface WaveformViewProps {
   onSeek?: (sec: number) => void;
   onPan?: (deltaSec: number) => void;
   onZoom?: (factor: number, anchorSec: number) => void;
+  onSelect?: (selection: WaveformSelection | null) => void;
   className?: string;
 }
 
 const ACCENT_VARS: Record<NonNullable<WaveformViewProps["accent"]>, [string, string]> = {
-  primary: ["--primary", "#3B82F6"],
-  accent: ["--accent", "#06B6D4"],
+  primary: ["--primary", "#8B5CF6"],
+  accent: ["--gold", "#FBBF24"],
   success: ["--success", "#22C55E"],
   destructive: ["--destructive", "#EF4444"],
 };
 
 /**
  * Canvas waveform with min/max peak reduction, timeline ruler, VAD overlay,
- * click-to-seek, wheel zoom (anchored at the pointer) and drag panning.
+ * click-to-seek, drag region selection, wheel zoom (pointer anchored) and alt-drag panning.
  */
 export function WaveformView({
   samples,
@@ -43,6 +50,7 @@ export function WaveformView({
   cursorSec,
   playheadSec,
   vadSegments,
+  selection = null,
   accent = "primary",
   height = 168,
   showRuler = true,
@@ -50,6 +58,7 @@ export function WaveformView({
   onSeek,
   onPan,
   onZoom,
+  onSelect,
   className,
 }: WaveformViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -57,9 +66,10 @@ export function WaveformView({
   const progressRef = useRef(animateDraw ? 0 : 1);
   const rafRef = useRef<number | null>(null);
   const dragRef = useRef<{ x: number; start: number } | null>(null);
-  const stateRef = useRef({ viewStartSec, viewDurationSec, cursorSec, playheadSec });
+  const selectRef = useRef<{ x: number; sec: number; moved: boolean } | null>(null);
+  const stateRef = useRef({ viewStartSec, viewDurationSec, cursorSec, playheadSec, selection });
 
-  stateRef.current = { viewStartSec, viewDurationSec, cursorSec, playheadSec };
+  stateRef.current = { viewStartSec, viewDurationSec, cursorSec, playheadSec, selection };
 
   const rulerHeight = showRuler ? 20 : 0;
   const colors = useMemo(() => ACCENT_VARS[accent], [accent]);
@@ -80,17 +90,25 @@ export function WaveformView({
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    const { viewStartSec: vs, viewDurationSec: vd, cursorSec: cs, playheadSec: ph } = stateRef.current;
+    const {
+      viewStartSec: vs,
+      viewDurationSec: vd,
+      cursorSec: cs,
+      playheadSec: ph,
+      selection: sel,
+    } = stateRef.current;
     const waveTop = rulerHeight;
     const waveHeight = height - rulerHeight;
     const mid = waveTop + waveHeight / 2;
 
-    const border = cssVar("--border-strong", "#2D3A55");
-    const muted = cssVar("--muted-foreground", "#94A3B8");
+    const border = cssVar("--border-strong", "#3A2B63");
+    const muted = cssVar("--muted-foreground", "#9CA3AF");
+    const gold = cssVar("--gold", "#FBBF24");
     const accentColor = cssVar(colors[0], colors[1]);
+    const xOf = (sec: number) => ((sec - vs) / vd) * width;
 
     // Background grid
-    ctx.fillStyle = cssVar("--elevated", "#121B2B");
+    ctx.fillStyle = cssVar("--elevated", "#21173A");
     ctx.fillRect(0, 0, width, height);
 
     ctx.strokeStyle = border;
@@ -109,19 +127,47 @@ export function WaveformView({
     if (vadSegments) {
       for (const seg of vadSegments) {
         if (!seg.speech) continue;
-        const x1 = ((seg.startSec - vs) / vd) * width;
-        const x2 = ((seg.endSec - vs) / vd) * width;
+        const x1 = xOf(seg.startSec);
+        const x2 = xOf(seg.endSec);
         if (x2 < 0 || x1 > width) continue;
         ctx.fillStyle = cssVar("--success", "#22C55E");
-        ctx.globalAlpha = 0.12;
+        ctx.globalAlpha = 0.14;
         ctx.fillRect(x1, waveTop, x2 - x1, waveHeight);
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = cssVar("--success", "#22C55E");
+        ctx.beginPath();
+        ctx.moveTo(x1 + 0.5, waveTop);
+        ctx.lineTo(x1 + 0.5, height);
+        ctx.moveTo(x2 + 0.5, waveTop);
+        ctx.lineTo(x2 + 0.5, height);
+        ctx.stroke();
         ctx.globalAlpha = 1;
       }
     }
 
+    // Region selection
+    if (sel && Math.abs(sel.endSec - sel.startSec) > 1e-4) {
+      const x1 = xOf(Math.min(sel.startSec, sel.endSec));
+      const x2 = xOf(Math.max(sel.startSec, sel.endSec));
+      ctx.fillStyle = gold;
+      ctx.globalAlpha = 0.14;
+      ctx.fillRect(x1, waveTop, x2 - x1, waveHeight);
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = gold;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x1 + 0.5, waveTop);
+      ctx.lineTo(x1 + 0.5, height);
+      ctx.moveTo(x2 + 0.5, waveTop);
+      ctx.lineTo(x2 + 0.5, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
     // Ruler
     if (showRuler) {
-      ctx.fillStyle = cssVar("--surface", "#172033");
+      ctx.fillStyle = cssVar("--surface", "#171129");
       ctx.fillRect(0, 0, width, rulerHeight);
       ctx.strokeStyle = border;
       ctx.beginPath();
@@ -138,8 +184,8 @@ export function WaveformView({
       ctx.font = "500 10px ui-monospace, monospace";
       ctx.textBaseline = "middle";
       for (let t = first; t < vs + vd; t += step) {
-        const x = ((t - vs) / vd) * width;
-        ctx.globalAlpha = 0.55;
+        const x = xOf(t);
+        ctx.globalAlpha = 0.5;
         ctx.strokeStyle = border;
         ctx.beginPath();
         ctx.moveTo(x + 0.5, 0);
@@ -159,7 +205,7 @@ export function WaveformView({
 
     ctx.strokeStyle = accentColor;
     ctx.fillStyle = accentColor;
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.9;
     ctx.beginPath();
     for (let x = 0; x < visibleWidth; x++) {
       const from = startSample + Math.floor(x * perPixel);
@@ -187,16 +233,15 @@ export function WaveformView({
 
     // Zero line
     ctx.strokeStyle = muted;
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.3;
     ctx.beginPath();
     ctx.moveTo(0, mid + 0.5);
     ctx.lineTo(width, mid + 0.5);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // Selection cursor
     const drawMarker = (sec: number, color: string, label: boolean) => {
-      const x = ((sec - vs) / vd) * width;
+      const x = xOf(sec);
       if (x < -2 || x > width + 2) return;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
@@ -216,16 +261,17 @@ export function WaveformView({
         const text = formatTime(sec);
         const w = ctx.measureText(text).width + 8;
         const bx = Math.min(Math.max(x + 6, 2), width - w - 2);
-        ctx.fillStyle = cssVar("--surface", "#172033");
+        ctx.fillStyle = cssVar("--surface", "#171129");
         ctx.fillRect(bx, height - 18, w, 15);
         ctx.fillStyle = color;
         ctx.fillText(text, bx + 4, height - 10);
       }
     };
 
-    drawMarker(cs, cssVar("--warning", "#F59E0B"), true);
+    // Cursor is gold (selected state), playhead is bright purple.
+    drawMarker(cs, gold, true);
     if (ph !== undefined && Math.abs(ph - cs) > 1e-4) {
-      drawMarker(ph, cssVar("--accent", "#06B6D4"), false);
+      drawMarker(ph, cssVar("--primary-bright", "#A855F7"), false);
     }
   }, [colors, height, rulerHeight, samples, sampleRate, showRuler, vadSegments]);
 
@@ -251,7 +297,7 @@ export function WaveformView({
 
   useEffect(() => {
     draw();
-  }, [draw, viewStartSec, viewDurationSec, cursorSec, playheadSec]);
+  }, [draw, viewStartSec, viewDurationSec, cursorSec, playheadSec, selection]);
 
   useEffect(() => {
     const observer = new ResizeObserver(() => draw());
@@ -284,27 +330,42 @@ export function WaveformView({
   return (
     <div
       ref={wrapRef}
-      className={`relative w-full cursor-crosshair select-none overflow-hidden rounded-md border border-border ${className ?? ""}`}
+      className={`relative w-full cursor-crosshair touch-none select-none overflow-hidden rounded-md border border-border ${className ?? ""}`}
       style={{ height }}
       onPointerDown={(event) => {
+        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
         if (event.button === 1 || event.altKey) {
           dragRef.current = { x: event.clientX, start: viewStartSec };
-          (event.target as HTMLElement).setPointerCapture(event.pointerId);
           return;
         }
-        onSeek?.(secFromEvent(event.clientX));
+        const sec = secFromEvent(event.clientX);
+        selectRef.current = { x: event.clientX, sec, moved: false };
+        onSeek?.(sec);
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;
-        if (!drag || !onPan) return;
-        const rect = wrapRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const deltaSec = ((drag.x - event.clientX) / rect.width) * viewDurationSec;
-        onPan(deltaSec);
-        dragRef.current = { x: event.clientX, start: drag.start };
+        if (drag && onPan) {
+          const rect = wrapRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const deltaSec = ((drag.x - event.clientX) / rect.width) * viewDurationSec;
+          onPan(deltaSec);
+          dragRef.current = { x: event.clientX, start: drag.start };
+          return;
+        }
+        const sel = selectRef.current;
+        if (!sel) return;
+        const sec = secFromEvent(event.clientX);
+        if (Math.abs(event.clientX - sel.x) > 3) {
+          sel.moved = true;
+          onSelect?.({ startSec: Math.min(sel.sec, sec), endSec: Math.max(sel.sec, sec) });
+          onSeek?.(sec);
+        }
       }}
-      onPointerUp={() => {
+      onPointerUp={(event) => {
+        (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+        if (selectRef.current && !selectRef.current.moved) onSelect?.(null);
         dragRef.current = null;
+        selectRef.current = null;
       }}
     >
       <canvas ref={canvasRef} className="block h-full w-full" />
