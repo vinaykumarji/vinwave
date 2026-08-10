@@ -11,7 +11,7 @@ import {
   DEFAULT_WIENER,
   DEFAULT_VAD_PARAMS,
 } from "@/lib/dsp";
-import { createDemoSignal } from "@/lib/audio/decode";
+import { createDemoSignal, DEMO_PRESETS, type DemoNoiseKind } from "@/lib/audio/decode";
 import { yieldToUi } from "@/lib/format";
 import type {
   AlgorithmId,
@@ -50,12 +50,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 const STAGE_LABELS = [
   "Loading audio",
-  "Computing FFT",
-  "Detecting noise profile",
-  "Running algorithm",
-  "Calculating SNR",
-  "Generating results",
+  "Frame blocking & windowing",
+  "Estimating noise",
+  "Applying algorithm",
+  "Calculating metrics",
+  "Preparing result",
 ] as const;
+
 
 const ALGORITHM_LABELS: Record<AlgorithmId, string> = {
   "spectral-subtraction": "Spectral Subtraction",
@@ -84,7 +85,7 @@ export interface StudioState {
 export interface StudioApi extends StudioState {
   activeSignal: AudioSignal | null;
   loadSignal: (signal: AudioSignal) => void;
-  loadDemo: () => void;
+  loadDemo: (kind?: DemoNoiseKind) => void;
   setActiveSignal: (id: string) => void;
   setCursorSec: (sec: number) => void;
   setPropertiesOpen: (open: boolean) => void;
@@ -157,12 +158,17 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const loadDemo = useCallback(() => {
-    loadSignal(createDemoSignal());
-    toast.success("Demo signal loaded", {
-      description: "4 s of synthesised speech with broadband noise and 50 Hz hum.",
-    });
-  }, [loadSignal]);
+  const loadDemo = useCallback(
+    (kind: DemoNoiseKind = "white") => {
+      loadSignal(createDemoSignal(kind));
+      const preset = DEMO_PRESETS.find((p) => p.id === kind);
+      toast.success(`${preset?.label ?? "Demo"} sample loaded`, {
+        description: `4 s of synthesised speech · ${preset?.description ?? ""}`,
+      });
+    },
+    [loadSignal],
+  );
+
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));

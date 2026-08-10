@@ -105,46 +105,100 @@ export async function decodeFile(file: File, normalize: boolean): Promise<AudioS
   };
 }
 
-/** Synthesised noisy speech-like signal used by the demo workspace. */
-export function createDemoSignal(sampleRate = 16000, durationSec = 4): AudioSignal {
+export type DemoNoiseKind = "white" | "traffic" | "babble";
+
+export interface DemoPreset {
+  id: DemoNoiseKind;
+  label: string;
+  description: string;
+}
+
+/**
+ * Demo presets are synthesised in the browser (no bundled audio yet).
+ * Drop real recordings in /public/demo and extend `loadDemoFile` to use them.
+ */
+export const DEMO_PRESETS: DemoPreset[] = [
+  {
+    id: "white",
+    label: "White Noise",
+    description: "Stationary broadband hiss plus 50 Hz mains hum.",
+  },
+  {
+    id: "traffic",
+    label: "Traffic Noise",
+    description: "Low-frequency rumble with passing-vehicle sweeps.",
+  },
+  {
+    id: "babble",
+    label: "Babble Noise",
+    description: "Overlapping competing talkers (non-stationary).",
+  },
+];
+
+/** Voiced speech-like excitation with two formants. */
+function speechSample(t: number, f0Base: number, gain: number): number {
+  const f0 = f0Base + 12 * Math.sin(2 * Math.PI * 2.2 * t);
+  const envelope = 0.5 + 0.5 * Math.sin(2 * Math.PI * 3.5 * t);
+  let value = 0;
+  for (let h = 1; h <= 12; h++) {
+    const formant =
+      Math.exp(-Math.pow((h * f0 - 700) / 900, 2)) +
+      0.6 * Math.exp(-Math.pow((h * f0 - 2100) / 1100, 2));
+    value += (formant / h) * Math.sin(2 * Math.PI * h * f0 * t);
+  }
+  return value * gain * envelope;
+}
+
+/** Synthesised noisy speech used by the demo workspace. */
+export function createDemoSignal(
+  kind: DemoNoiseKind = "white",
+  sampleRate = 16000,
+  durationSec = 4,
+): AudioSignal {
   const length = Math.floor(sampleRate * durationSec);
   const samples = new Float32Array(length);
-  const f0Base = 118;
+  let rumble = 0;
 
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    // Three voiced bursts separated by noise-only silence.
     const inSpeech = (t > 0.6 && t < 1.5) || (t > 2.0 && t < 2.8) || (t > 3.1 && t < 3.8);
-    let value = 0;
-    if (inSpeech) {
-      const f0 = f0Base + 12 * Math.sin(2 * Math.PI * 2.2 * t);
-      const envelope = 0.5 + 0.5 * Math.sin(2 * Math.PI * 3.5 * t);
-      for (let h = 1; h <= 12; h++) {
-        const formant = Math.exp(-Math.pow((h * f0 - 700) / 900, 2)) + 0.6 * Math.exp(-Math.pow((h * f0 - 2100) / 1100, 2));
-        value += (formant / h) * Math.sin(2 * Math.PI * h * f0 * t);
-      }
-      value *= 0.28 * envelope;
+    let value = inSpeech ? speechSample(t, 118, 0.28) : 0;
+
+    if (kind === "white") {
+      value += (Math.random() * 2 - 1) * 0.055 + 0.012 * Math.sin(2 * Math.PI * 50 * t);
+    } else if (kind === "traffic") {
+      // One-pole low-passed noise gives a road-rumble spectrum.
+      rumble = 0.985 * rumble + 0.015 * (Math.random() * 2 - 1);
+      const pass = 0.03 * Math.sin(2 * Math.PI * (70 + 40 * Math.sin(2 * Math.PI * 0.15 * t)) * t);
+      value += rumble * 3.2 + pass;
+    } else {
+      // Three competing talkers at different pitches and offsets.
+      value +=
+        speechSample(t + 0.31, 96, 0.05) +
+        speechSample(t + 1.07, 142, 0.045) +
+        speechSample(t + 2.53, 205, 0.035) +
+        (Math.random() * 2 - 1) * 0.012;
     }
-    // Stationary broadband noise + 50 Hz mains hum.
-    const noise = (Math.random() * 2 - 1) * 0.055;
-    const hum = 0.012 * Math.sin(2 * Math.PI * 50 * t);
-    samples[i] = value + noise + hum;
+    samples[i] = value;
   }
+
+  const preset = DEMO_PRESETS.find((p) => p.id === kind) ?? DEMO_PRESETS[0];
 
   return {
     id: crypto.randomUUID(),
     kind: "demo",
     samples,
     metadata: {
-      fileName: "demo_noisy_speech.wav",
+      fileName: `demo_${kind}_noise.wav`,
       durationSec,
       fileSizeBytes: length * 2 + 44,
       sampleRate,
       channels: 1,
       bitDepth: 16,
-      encoding: "Linear PCM (synthesised)",
+      encoding: `Linear PCM (synthesised · ${preset.label})`,
       lastModified: Date.now(),
     },
     createdAt: Date.now(),
   };
 }
+

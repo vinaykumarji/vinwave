@@ -16,6 +16,10 @@ export interface SpectrogramViewProps {
   cursorSec: number;
   viewStartSec: number;
   viewDurationSec: number;
+  /** Highlighted time region, mirrored from the waveform selection. */
+  selection?: { startSec: number; endSec: number } | null;
+  /** Frequency line to highlight (e.g. the FFT peak at the cursor). */
+  markerHz?: number | null;
   maxFrames?: number;
   onSeek?: (sec: number) => void;
   className?: string;
@@ -33,6 +37,8 @@ export function SpectrogramView({
   cursorSec,
   viewStartSec,
   viewDurationSec,
+  selection = null,
+  markerHz = null,
   maxFrames = 900,
   onSeek,
   className,
@@ -96,13 +102,16 @@ export function SpectrogramView({
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    ctx.fillStyle = cssVar("--elevated", "#121B2B");
+    ctx.fillStyle = cssVar("--elevated", "#21173A");
     ctx.fillRect(0, 0, width, height);
 
     const totalSec = samples.length / sampleRate;
     const sx = (viewStartSec / totalSec) * source.width;
     const sw = Math.max(1, (viewDurationSec / totalSec) * source.width);
     ctx.drawImage(source, sx, 0, sw, source.height, 0, 0, width, height);
+
+    const xOf = (sec: number) => ((sec - viewStartSec) / viewDurationSec) * width;
+    const gold = cssVar("--gold", "#FBBF24");
 
     // Frequency gridlines
     const nyquist = sampleRate / 2;
@@ -120,9 +129,42 @@ export function SpectrogramView({
       ctx.fillText(`${(hz / 1000).toFixed(1)}k`, 4, y - 7);
     }
 
-    const x = ((cursorSec - viewStartSec) / viewDurationSec) * width;
+    // Selection region mirrored from the waveform
+    if (selection && Math.abs(selection.endSec - selection.startSec) > 1e-4) {
+      const x1 = xOf(Math.min(selection.startSec, selection.endSec));
+      const x2 = xOf(Math.max(selection.startSec, selection.endSec));
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fillRect(x1, 0, x2 - x1, height);
+      ctx.strokeStyle = gold;
+      ctx.globalAlpha = 0.75;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x1 + 0.5, 0);
+      ctx.lineTo(x1 + 0.5, height);
+      ctx.moveTo(x2 + 0.5, 0);
+      ctx.lineTo(x2 + 0.5, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    // Peak-frequency marker for the analysed frame
+    if (markerHz != null && markerHz > 0 && markerHz < nyquist) {
+      const y = height * (1 - markerHz / nyquist);
+      ctx.strokeStyle = gold;
+      ctx.globalAlpha = 0.5;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(width, y + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    const x = xOf(cursorSec);
     if (x >= 0 && x <= width) {
-      ctx.strokeStyle = cssVar("--warning", "#F59E0B");
+      ctx.strokeStyle = gold;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(x + 0.5, 0);
@@ -131,9 +173,9 @@ export function SpectrogramView({
       const label = formatTime(cursorSec);
       const w = ctx.measureText(label).width + 8;
       const bx = Math.min(Math.max(x + 6, 2), width - w - 2);
-      ctx.fillStyle = "rgba(11,18,32,0.85)";
+      ctx.fillStyle = "rgba(13,10,24,0.85)";
       ctx.fillRect(bx, 4, w, 15);
-      ctx.fillStyle = cssVar("--warning", "#F59E0B");
+      ctx.fillStyle = gold;
       ctx.fillText(label, bx + 4, 12);
     }
   }
@@ -141,7 +183,7 @@ export function SpectrogramView({
   useEffect(() => {
     render();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cursorSec, viewStartSec, viewDurationSec, height]);
+  }, [cursorSec, viewStartSec, viewDurationSec, height, selection, markerHz]);
 
   useEffect(() => {
     const observer = new ResizeObserver(() => render());

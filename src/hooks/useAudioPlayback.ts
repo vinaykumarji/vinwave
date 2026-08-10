@@ -10,7 +10,8 @@ export interface PlaybackController {
   volume: number;
   loop: boolean;
   rate: number;
-  play: (fromSec?: number) => void;
+  play: (fromSec?: number, untilSec?: number) => void;
+  playRange: (startSec: number, endSec: number) => void;
   pause: () => void;
   stop: () => void;
   seek: (sec: number) => void;
@@ -62,7 +63,7 @@ export function useAudioPlayback(signal: AudioSignal | null): PlaybackController
   useEffect(() => () => teardown(), [teardown]);
 
   const play = useCallback(
-    (fromSec?: number) => {
+    (fromSec?: number, untilSec?: number) => {
       if (!signal || signal.samples.length === 0) return;
       const ctx = getAudioContext();
       void ctx.resume();
@@ -83,31 +84,45 @@ export function useAudioPlayback(signal: AudioSignal | null): PlaybackController
       source.connect(gain);
 
       const offset = Math.max(0, Math.min(fromSec ?? offsetRef.current, durationSec - 0.01));
+      const span =
+        untilSec !== undefined ? Math.max(0.01, Math.min(untilSec, durationSec) - offset) : undefined;
+      if (loop && span !== undefined) {
+        source.loopStart = offset;
+        source.loopEnd = offset + span;
+      }
       offsetRef.current = offset;
       startedAtRef.current = ctx.currentTime;
-      source.start(0, offset);
+      if (span !== undefined && !loop) source.start(0, offset, span);
+      else source.start(0, offset);
       sourceRef.current = source;
       setPlaying(true);
 
       source.onended = () => {
         if (!loop) {
           setPlaying(false);
-          offsetRef.current = 0;
-          setPositionSec(0);
+          offsetRef.current = offset;
+          setPositionSec(offset);
         }
       };
 
+      const limit = span !== undefined ? offset + span : durationSec;
       const tick = () => {
         const ctxNow = getAudioContext().currentTime;
         const elapsed = (ctxNow - startedAtRef.current) * rate;
         let pos = offset + elapsed;
-        if (loop && durationSec > 0) pos %= durationSec;
-        setPositionSec(Math.min(pos, durationSec));
+        if (loop && span !== undefined) pos = offset + (elapsed % span);
+        else if (loop && durationSec > 0) pos %= durationSec;
+        setPositionSec(Math.min(pos, limit));
         rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
     },
     [durationSec, loop, rate, signal, teardown, volume],
+  );
+
+  const playRange = useCallback(
+    (startSec: number, endSec: number) => play(Math.min(startSec, endSec), Math.max(startSec, endSec)),
+    [play],
   );
 
   const pause = useCallback(() => {
@@ -153,6 +168,7 @@ export function useAudioPlayback(signal: AudioSignal | null): PlaybackController
     loop,
     rate,
     play,
+    playRange,
     pause,
     stop,
     seek,
