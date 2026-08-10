@@ -4,14 +4,21 @@ import { StatRow } from "@/components/common/MetricCard";
 import { ProcessingHistory } from "@/components/audio/ProcessingHistory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBytes, formatDb, formatHz, formatTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useStudio } from "@/store/studio";
 
 /** Right-hand properties panel — always shows metadata for the active signal. */
-export function PropertiesPanel() {
+export function PropertiesPanel({ className }: { className?: string }) {
   const { activeSignal, statistics, runs } = useStudio();
 
   return (
-    <aside className="flex h-full w-[288px] shrink-0 flex-col border-l border-border bg-sidebar">
+    <aside
+      className={cn(
+        "flex h-full w-[288px] shrink-0 flex-col border-l border-border bg-sidebar",
+        className,
+      )}
+    >
+
       <div className="flex h-9 items-center gap-2 border-b border-border px-3">
         <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="label-eyebrow">Properties</span>

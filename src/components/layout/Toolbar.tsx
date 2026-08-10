@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
-import { Bell, PanelRight, Search, Settings2, FileAudio } from "lucide-react";
+import { Bell, Menu, PanelRight, Search, Settings2, FileAudio } from "lucide-react";
 
 import { NAV_ITEMS } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,13 @@ import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useStudio } from "@/store/studio";
 
-export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function Toolbar({
+  onOpenSettings,
+  onOpenNav,
+}: {
+  onOpenSettings: () => void;
+  onOpenNav?: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { original, activeSignal, propertiesOpen, setPropertiesOpen, job } = useStudio();
   const current = NAV_ITEMS.find((item) => item.to === pathname);
@@ -16,7 +22,17 @@ export function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <header className="z-10 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border bg-surface px-3">
       <div className="flex min-w-0 items-center gap-3">
+        {onOpenNav ? (
+          <button
+            aria-label="Open navigation"
+            onClick={onOpenNav}
+            className="press grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border text-muted-foreground hover:text-foreground"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        ) : null}
         <div className="min-w-0">
+
           <div className="flex min-w-0 items-baseline gap-2">
             <h1 className="truncate text-[13px] font-semibold tracking-tight">
               {current?.label ?? "Workspace"}
