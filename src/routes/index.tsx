@@ -123,7 +123,7 @@ function DashboardPage() {
                 actionLabel="Import audio"
                 onAction={() => navigate({ to: "/import" })}
                 secondary={
-                  <Button variant="outline" size="sm" className="press" onClick={loadDemo}>
+                  <Button variant="outline" size="sm" className="press" onClick={() => loadDemo()}>
                     Load demo
                   </Button>
                 }
