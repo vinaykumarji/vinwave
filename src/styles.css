@@ -289,7 +289,3 @@
   border-color: color-mix(in oklab, var(--gold) 55%, transparent);
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--gold) 30%, transparent) inset;
 }
-
-@utility text-gold {
-  color: var(--gold);
-}
