@@ -89,9 +89,3 @@ The application is organized into modular sections:
 - Node.js
 - npm
 
-### Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/vinaykumarji/vinwave.git
